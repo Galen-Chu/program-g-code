@@ -18,12 +18,12 @@ A comprehensive guide to get started with the CI/CD Toolkit.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ci-cd-toolkit.git
-cd ci-cd-toolkit
+git clone https://github.com/Galen-Chu/program-g-code.git
+cd program-g-code
 
 # Or copy to your existing project
-cp -r ci-cd-toolkit/scripts /path/to/your/project/
-cp -r ci-cd-toolkit/config /path/to/your/project/
+cp -r scripts/ /path/to/your/project/
+cp -r config/ /path/to/your/project/
 ```
 
 ### Initialize Your Project
@@ -229,12 +229,12 @@ SLACK_WEBHOOK=https://hooks.slack.com/...
 
 ### GitHub Actions
 
-The toolkit includes GitHub Actions workflow templates:
+The toolkit includes GitHub Actions workflows (in `.github/workflows/`):
 
 ```bash
 # Copy to your project
-cp templates/github-actions/ci.yml .github/workflows/
-cp templates/github-actions/cd.yml .github/workflows/
+cp .github/workflows/ci.yml /path/to/your/project/.github/workflows/
+cp .github/workflows/cd.yml /path/to/your/project/.github/workflows/
 ```
 
 #### Features
@@ -256,7 +256,7 @@ cp templates/github-actions/cd.yml .github/workflows/
 
 ```bash
 # Copy to your project
-cp templates/gitlab-ci/ci.yml .gitlab-ci.yml
+cp .gitlab-ci.yml /path/to/your/project/
 ```
 
 #### Features

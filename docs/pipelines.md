@@ -73,12 +73,12 @@ Location: `.github/workflows/`
 
 ### Setting Up GitHub Actions
 
-1. **Copy workflow templates:**
+1. **Copy workflow files:**
 ```bash
-cp templates/github-actions/ci.yml .github/workflows/
-cp templates/github-actions/cd.yml .github/workflows/
-cp templates/github-actions/release.yml .github/workflows/
-cp templates/github-actions/security-scan.yml .github/workflows/
+cp .github/workflows/ci.yml /path/to/your/project/.github/workflows/
+cp .github/workflows/cd.yml /path/to/your/project/.github/workflows/
+cp .github/workflows/release.yml /path/to/your/project/.github/workflows/
+cp .github/workflows/security-scan.yml /path/to/your/project/.github/workflows/
 ```
 
 2. **Configure secrets:**
@@ -164,7 +164,7 @@ File: `.gitlab-ci.yml`
 
 1. **Copy configuration:**
 ```bash
-cp templates/gitlab-ci/ci.yml .gitlab-ci.yml
+cp .gitlab-ci.yml /path/to/your/project/.gitlab-ci.yml
 ```
 
 2. **Configure variables:**

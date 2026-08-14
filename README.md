@@ -20,12 +20,12 @@ A comprehensive, language-agnostic CI/CD toolkit providing scripts, templates, a
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ci-cd-toolkit.git
-cd ci-cd-toolkit
+git clone https://github.com/Galen-Chu/program-g-code.git
+cd program-g-code
 
 # Or copy the scripts directory to your project
-cp -r ci-cd-toolkit /path/to/your/project/scripts
-cp -r ci-cd-toolkit/config /path/to/your/project/
+cp -r scripts/ /path/to/your/project/
+cp -r config/ /path/to/your/project/
 ```
 
 ### 2. Initialize Your Project
@@ -66,7 +66,7 @@ bash scripts/cd/deploy.sh staging
 ## Project Structure
 
 ```
-ci-cd-toolkit/
+program-g-code/
 ├── scripts/
 │   ├── ci/
 │   │   ├── lint.sh          # Lint code (auto-detects linter)
@@ -91,9 +91,9 @@ ci-cd-toolkit/
 │       └── update-changelog.sh  # CHANGELOG automation
 ├── config/
 │   └── ci-cd.conf           # Configuration template
-├── templates/
-│   ├── github-actions/      # GitHub Actions workflows
-│   └── gitlab-ci/           # GitLab CI configurations
+├── .github/workflows/       # GitHub Actions workflows (ci, cd, release, security-scan)
+├── .github/hooks/           # Pre-commit hooks
+├── .gitlab-ci.yml            # GitLab CI pipeline definition
 ├── examples/
 │   ├── simple-nodejs/       # Node.js example project
 │   └── simple-python/       # Python example project
@@ -195,12 +195,8 @@ bash scripts/cd/build.sh
 
 ### GitHub Actions
 
-Copy workflow templates to your `.github/workflows/` directory:
-
-```bash
-cp templates/github-actions/ci.yml .github/workflows/
-cp templates/github-actions/cd.yml .github/workflows/
-```
+The workflows are in `.github/workflows/` (ci, cd, release, security-scan).
+Copy them to your project, or use them directly by forking this repo:
 
 Features:
 - Matrix builds across OS and language versions
@@ -211,10 +207,10 @@ Features:
 
 ### GitLab CI
 
-Copy the GitLab CI configuration:
+Copy the GitLab CI configuration to your project:
 
 ```bash
-cp templates/gitlab-ci/ci.yml .gitlab-ci.yml
+cp .gitlab-ci.yml /path/to/your/project/
 ```
 
 Features:

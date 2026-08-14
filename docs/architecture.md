@@ -101,7 +101,7 @@ Scripts can be run multiple times safely:
 ## Directory Structure
 
 ```
-ci-cd-toolkit/
+program-g-code/
 ├── scripts/
 │   ├── ci/                    # Continuous Integration scripts
 │   │   ├── lint.sh           # Linting
@@ -127,9 +127,9 @@ ci-cd-toolkit/
 ├── config/
 │   └── ci-cd.conf            # Configuration template
 │
-├── templates/                # Workflow templates
-│   ├── github-actions/
-│   └── gitlab-ci/
+├── .github/workflows/        # GitHub Actions workflows
+├── .github/hooks/            # Pre-commit hooks
+├── .gitlab-ci.yml             # GitLab CI pipeline
 │
 ├── examples/                 # Example projects
 │   ├── simple-nodejs/
