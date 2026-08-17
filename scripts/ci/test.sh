@@ -169,9 +169,8 @@ test_pytest() {
         return "${EXIT_ERROR_MISSING_DEPS}"
     fi
 
-    # Output JUnit XML
+    # Create test results directory (for tools that need it)
     ensure_dir "${TEST_RESULTS_DIR}"
-    args+=("--junitxml=${TEST_RESULTS_DIR}/junit.xml")
 
     if [[ "${GENERATE_COVERAGE}" == "true" ]]; then
         args+=("--cov=.")
