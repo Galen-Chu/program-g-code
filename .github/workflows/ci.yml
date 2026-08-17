@@ -31,12 +31,12 @@ jobs:
       run: npm install
 
     - name: Run toolkit's lint script (auto-detects Node.js)
+      working-directory: examples/simple-nodejs
       run: |
-        chmod +x scripts/**/*.sh
-        bash scripts/ci/lint.sh examples/simple-nodejs/
+        chmod +x ../../scripts/**/*.sh
+        bash ../../scripts/ci/lint.sh
       env:
         LOG_LEVEL: debug
-        PROJECT_TYPE: nodejs
 
   self-test-lint-python:
     name: Self-Test: Lint Python Example
@@ -54,12 +54,12 @@ jobs:
       run: pip install flake8
 
     - name: Run toolkit's lint script (auto-detects Python)
+      working-directory: examples/simple-python
       run: |
-        chmod +x scripts/**/*.sh
-        bash scripts/ci/lint.sh examples/simple-python/
+        chmod +x ../../scripts/**/*.sh
+        bash ../../scripts/ci/lint.sh
       env:
         LOG_LEVEL: debug
-        PROJECT_TYPE: python
 
   # ============================================================
   # Self-test: use the toolkit's OWN test script on its OWN
@@ -82,9 +82,10 @@ jobs:
       run: npm install
 
     - name: Run toolkit's test script (auto-detects Jest)
+      working-directory: examples/simple-nodejs
       run: |
-        chmod +x scripts/**/*.sh
-        bash scripts/ci/test.sh examples/simple-nodejs/
+        chmod +x ../../scripts/**/*.sh
+        bash ../../scripts/ci/test.sh
       env:
         LOG_LEVEL: info
 
@@ -105,9 +106,10 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Run toolkit's test script (auto-detects pytest)
+      working-directory: examples/simple-python
       run: |
-        chmod +x scripts/**/*.sh
-        bash scripts/ci/test.sh examples/simple-python/
+        chmod +x ../../scripts/**/*.sh
+        bash ../../scripts/ci/test.sh
       env:
         LOG_LEVEL: info
 

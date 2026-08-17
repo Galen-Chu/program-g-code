@@ -67,7 +67,7 @@ jobs:
     - name: Run toolkit's deploy script (dry-run)
       run: |
         chmod +x scripts/**/*.sh
-        DRY_RUN=true bash scripts/cd/deploy.sh ${{ env.TARGET_ENV }} --dry-run --skip-health-check
+        DRY_RUN=true bash scripts/cd/deploy.sh ${{ env.TARGET_ENV }} --dry-run --skip-health
       env:
         LOG_LEVEL: info
         ENVIRONMENTS: dev,staging,prod
