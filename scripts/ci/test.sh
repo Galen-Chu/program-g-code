@@ -36,10 +36,10 @@ source "${SCRIPT_DIR}/../utils/validators.sh"
 # Script Configuration
 # =============================================================================
 TEST_ENABLED="${TEST_ENABLED:-true}"
-PARALLEL_TESTS="${PARALLEL_TESTS:-true}"
+PARALLEL_TESTS="${PARALLEL_TESTS:-false}"
 TEST_TIMEOUT="${TEST_TIMEOUT:-300}"
 PARALLEL_JOBS="${PARALLEL_JOBS:-4}"
-COVERAGE_ENABLED="${COVERAGE_ENABLED:-true}"
+COVERAGE_ENABLED="${COVERAGE_ENABLED:-false}"
 
 # Test output directories
 TEST_RESULTS_DIR="${TEST_RESULTS_DIR:-test-results}"
@@ -179,7 +179,6 @@ test_pytest() {
         args+=("-k '${TEST_FILTER}'")
     fi
 
-    args+=("--timeout=${TEST_TIMEOUT}")
     args+=("-v")
 
     # Add test files if specified

@@ -26,8 +26,7 @@ jobs:
       run: |
         ERRORS=0
         for script in $(find scripts/ -name "*.sh" -type f); do
-          RESULT=$(shellcheck -x -S error "$script" 2>&1)
-          if [ $? -ne 0 ]; then
+          if ! shellcheck -x -S error "$script" > /dev/null 2>&1; then
             echo "::warning::ShellCheck error in $script"
             ERRORS=$((ERRORS + 1))
           fi
