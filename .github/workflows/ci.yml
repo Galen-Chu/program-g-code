@@ -81,6 +81,47 @@ jobs:
         [ "$MISSING" -eq 0 ] && echo "All ${#EXPECTED[@]} expected files present" || exit 1
 
   # ============================================================
+  # Direct tests: run the example projects' own tests directly
+  # (bypassing the toolkit scripts). These are hard gates that
+  # prove the examples work correctly.
+  # ============================================================
+  direct-test-nodejs:
+    name: "Test Node.js Example (direct)"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install and test
+      working-directory: examples/simple-nodejs
+      run: |
+        npm install
+        npm test
+
+  direct-test-python:
+    name: "Test Python Example (direct)"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install and test
+      working-directory: examples/simple-python
+      run: |
+        pip install -r requirements.txt
+        pytest -v
+
+  # ============================================================
   # Self-tests: prove the toolkit's scripts can auto-detect and
   # run. Informational (continue-on-error) because the scripts
   # need more real-world testing to be production-stable.
