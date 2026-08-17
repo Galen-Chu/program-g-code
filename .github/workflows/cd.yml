@@ -1,0 +1,170 @@
+name: CD (Simulation)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment to simulate'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [ dev, staging, prod ]
+      dry_run:
+        description: 'Dry run mode'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
+  TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
+
+jobs:
+  # ============================================================
+  # Build simulation: use the toolkit's OWN build script
+  # in dry-run mode to verify it can detect project types
+  # and generate a build plan.
+  # ============================================================
+  simulate-build:
+    name: Simulate: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        example: [ simple-nodejs, simple-python ]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup runtime
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Run toolkit's build script (dry-run)
+      run: |
+        chmod +x scripts/**/*.sh
+        DRY_RUN=true bash scripts/cd/build.sh --dry-run examples/${{ matrix.example }}/
+      env:
+        LOG_LEVEL: info
+        BUILD_TOOL: auto
+        TARGET_ENV: ${{ env.TARGET_ENV }}
+
+  # ============================================================
+  # Deploy simulation: use the toolkit's OWN deploy script
+  # in dry-run mode — validates the pipeline stages without
+  # actually deploying anywhere.
+  # ============================================================
+  simulate-deploy:
+    name: Simulate: Deploy (${{ github.event.inputs.environment || 'dev' }})
+    runs-on: ubuntu-latest
+    needs: simulate-build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run toolkit's deploy script (dry-run)
+      run: |
+        chmod +x scripts/**/*.sh
+        DRY_RUN=true bash scripts/cd/deploy.sh ${{ env.TARGET_ENV }} --dry-run --skip-health-check
+      env:
+        LOG_LEVEL: info
+        ENVIRONMENTS: dev,staging,prod
+
+  # ============================================================
+  # Rollback simulation: verify the rollback script can
+  # list versions and simulate a rollback operation.
+  # ============================================================
+  simulate-rollback:
+    name: Simulate: Rollback
+    runs-on: ubuntu-latest
+    needs: simulate-deploy
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run toolkit's rollback script (list mode)
+      run: |
+        chmod +x scripts/**/*.sh
+        DRY_RUN=true bash scripts/cd/rollback.sh ${{ env.TARGET_ENV }} --list
+      env:
+        LOG_LEVEL: info
+
+  # ============================================================
+  # Health check simulation: spin up a mock HTTP server,
+  # then use the toolkit's health-check script against it.
+  # ============================================================
+  simulate-health-check:
+    name: Simulate: Health Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Start mock server
+      run: |
+        python3 -c "
+        import http.server, threading
+        server = http.server.HTTPServer(('localhost', 18080), http.server.SimpleHTTPRequestHandler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        import time; time.sleep(120)
+        " &
+        sleep 2
+        echo "Mock server started on :18080"
+
+    - name: Run toolkit's health-check script (HTTP)
+      run: |
+        chmod +x scripts/**/*.sh
+        bash scripts/utils/health-check.sh http://localhost:18080/ --retry 3 --interval 2
+
+    - name: Run toolkit's health-check script (TCP)
+      run: |
+        bash scripts/utils/health-check.sh --tcp localhost:18080 --retry 3 --interval 2
+
+  # ============================================================
+  # Notification simulation: test the notifiers script
+  # with a mock webhook endpoint.
+  # ============================================================
+  simulate-notification:
+    name: Simulate: Notification
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run toolkit's notifiers script (webhook dry-run)
+      run: |
+        chmod +x scripts/**/*.sh
+        DRY_RUN=true bash scripts/utils/notifiers.sh webhook "CI simulation test — deploy to ${{ env.TARGET_ENV }} (dry-run) completed successfully" --url http://localhost:19999/hook
+      env:
+        LOG_LEVEL: info
+
+  # ============================================================
+  # Pipeline summary: report which simulations passed
+  # ============================================================
+  cd-summary:
+    name: CD Simulation Summary
+    runs-on: ubuntu-latest
+    needs: [simulate-build, simulate-deploy, simulate-rollback, simulate-health-check, simulate-notification]
+    if: always()
+    steps:
+    - name: Report pipeline results
+      run: |
+        cat << 'EOF' >> $GITHUB_STEP_SUMMARY
+        ## CD Pipeline Simulation Summary
+
+        | Stage | Result |
+        |-------|--------|
+        | Build (nodejs) | ${{ needs.simulate-build.result }} |
+        | Deploy | ${{ needs.simulate-deploy.result }} |
+        | Rollback | ${{ needs.simulate-rollback.result }} |
+        | Health Check | ${{ needs.simulate-health-check.result }} |
+        | Notification | ${{ needs.simulate-notification.result }} |
+
+        **Config**: Target = ${{ env.TARGET_ENV }}, Dry-run = ${{ env.DRY_RUN }}
+
+        > This is a closed-loop simulation using the toolkit's own scripts.
+        > In production, change `DRY_RUN=false` and configure real deployment targets.
+        EOF

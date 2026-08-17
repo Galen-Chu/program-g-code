@@ -9,15 +9,15 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Create Release
+  # Validate the toolkit is release-ready using its own scripts
+  validate:
+    name: Validate Toolkit
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Validate scripts before release
+    - name: ShellCheck all scripts
       run: |
         sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
         ERRORS=0
@@ -26,22 +26,58 @@ jobs:
             ERRORS=$((ERRORS + 1))
           fi
         done
-        if [ "$ERRORS" -gt 0 ]; then
-          echo "::error::$ERRORS script(s) failed ShellCheck"
-          exit 1
-        fi
-        echo "All scripts pass ShellCheck — safe to release"
+        [ "$ERRORS" -eq 0 ] && echo "All scripts pass" || exit 1
 
-    - name: Package toolkit
+    - name: Run toolkit's own pre-flight check
+      run: |
+        chmod +x scripts/**/*.sh
+        bash scripts/utils/pre-flight.sh --strict --skip-docs
+      env:
+        LOG_LEVEL: warn
+
+  # Package the toolkit using its own build script concept
+  package:
+    name: Package Toolkit
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Package as tar.gz and zip
       run: |
         mkdir -p dist
-        tar -czf dist/program-g-code-${GITHUB_REF#refs/tags/}.tar.gz \
-          scripts/ config/ examples/ docs/ README.md LICENSE
-        zip -r dist/program-g-code-${GITHUB_REF#refs/tags/}.zip \
-          scripts/ config/ examples/ docs/ README.md LICENSE
+        VERSION=${GITHUB_REF#refs/tags/}
+        tar -czf "dist/program-g-code-${VERSION}.tar.gz" \
+          scripts/ config/ examples/ docs/ README.md LICENSE CHANGELOG.md CONTRIBUTING.md
+        zip -r "dist/program-g-code-${VERSION}.zip" \
+          scripts/ config/ examples/ docs/ README.md LICENSE CHANGELOG.md CONTRIBUTING.md
+        ls -lh dist/
+
+    - name: Verify package integrity
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/}
+        tar -tzf "dist/program-g-code-${VERSION}.tar.gz" | head -5
+        echo "..."
+        tar -tzf "dist/program-g-code-${VERSION}.tar.gz" | wc -l
+        echo "files in archive"
+
+  # Create GitHub Release with artifacts
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist/
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/*
+        files: dist/**/*.tar.gz
         generate_release_notes: true
