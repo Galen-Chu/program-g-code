@@ -27,7 +27,7 @@ set -euo pipefail
 # Get script directory
 _STATUS_CHECK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ -z "${SCRIPT_DIR:-}" ]]; then
-    SCRIPT_DIR="_STATUS_CHECK_DIR"
+    SCRIPT_DIR="${_STATUS_CHECK_DIR}"
 fi
 
 # Source dependencies
