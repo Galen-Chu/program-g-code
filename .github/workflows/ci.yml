@@ -15,7 +15,7 @@ jobs:
   # example projects — proves the auto-detection works.
   # ============================================================
   self-test-lint-nodejs:
-    name: Self-Test: Lint Node.js Example
+    name: "Self-Test: Lint Node.js Example"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -39,7 +39,7 @@ jobs:
         LOG_LEVEL: debug
 
   self-test-lint-python:
-    name: Self-Test: Lint Python Example
+    name: "Self-Test: Lint Python Example"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -66,7 +66,7 @@ jobs:
   # example projects — proves the test runner detection works.
   # ============================================================
   self-test-nodejs:
-    name: Self-Test: Test Node.js Example
+    name: "Self-Test: Test Node.js Example"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -90,7 +90,7 @@ jobs:
         LOG_LEVEL: info
 
   self-test-python:
-    name: Self-Test: Test Python Example
+    name: "Self-Test: Test Python Example"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -118,7 +118,7 @@ jobs:
   # against the toolkit repo itself.
   # ============================================================
   self-test-preflight:
-    name: Self-Test: Pre-flight Check
+    name: "Self-Test: Pre-flight Check"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -135,7 +135,7 @@ jobs:
   # Doc-check: validate documentation completeness
   # ============================================================
   self-test-doccheck:
-    name: Self-Test: Documentation Check
+    name: "Self-Test: Documentation Check"
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
