@@ -91,10 +91,6 @@ test_jest() {
         args+=("${test_files[@]}")
     fi
 
-    # Output JUnit XML
-    ensure_dir "${TEST_RESULTS_DIR}"
-    args+=("--junitPath=${TEST_RESULTS_DIR}/junit.xml")
-
     # Run Jest
     log_info "Running Jest..."
     log_cmd "${jest_cmd}" "${args[@]}"

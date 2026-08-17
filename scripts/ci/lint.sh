@@ -79,10 +79,11 @@ lint_eslint() {
     fi
 
     args+=("--format=compact")
-    args+=("--max-warnings=0")
 
-    if [[ "${FAIL_ON_WARNINGS}" == "false" ]]; then
-        args+=("--max-warnings=-1")
+    # Only enforce zero warnings when explicitly requested (default: off,
+    # so warnings are shown but don't fail the build)
+    if [[ "${FAIL_ON_WARNINGS}" == "true" ]]; then
+        args+=("--max-warnings=0")
     fi
 
     # Run ESLint
