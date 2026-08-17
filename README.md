@@ -2,7 +2,10 @@
 
 A comprehensive, language-agnostic CI/CD toolkit providing scripts, templates, and workflows for automating your development pipeline.
 
-## Features
+
+---
+
+## ✨ Features
 
 - **Language-Agnostic**: Works with Node.js, Python, Go, Java, Docker, and more
 - **Auto-Detection**: Automatically detects project type and tools
@@ -14,7 +17,10 @@ A comprehensive, language-agnostic CI/CD toolkit providing scripts, templates, a
 - **Rollback Support**: Automatic rollback on deployment failure
 - **Configurable**: Centralized configuration file with environment variable overrides
 
-## Quick Start
+
+---
+
+## 🚀 Quick Start
 
 ### 1. Clone or Copy to Your Project
 
@@ -63,7 +69,10 @@ bash scripts/cd/build.sh
 bash scripts/cd/deploy.sh staging
 ```
 
-## Project Structure
+
+---
+
+## 🏗️ Project Structure
 
 ```
 program-g-code/
@@ -103,7 +112,10 @@ program-g-code/
     └── scripts-reference.md # Script documentation
 ```
 
-## Configuration
+
+---
+
+## ⚙️ Configuration
 
 Create a `config/ci-cd.conf` file in your project (or use `.ci-cd.conf` in the root):
 
@@ -133,7 +145,10 @@ enabled_events=deploy_success,deploy_failure
 
 See [Configuration Guide](docs/configuration.md) for all options.
 
-## Usage
+
+---
+
+## 📖 Usage
 
 ### Command-Line Interface
 
@@ -157,7 +172,10 @@ export BUILD_VERSION=1.0.0
 bash scripts/cd/build.sh
 ```
 
-## Supported Languages and Tools
+
+---
+
+## 🌐 Supported Languages and Tools
 
 ### Node.js / JavaScript
 
@@ -191,7 +209,10 @@ bash scripts/cd/build.sh
 - **Multi-stage builds**: Supported
 - **Registry push**: Docker Hub, ECR, GCR, ACR
 
-## CI/CD Platform Integration
+
+---
+
+## 🔄 CI/CD Platform Integration
 
 ### GitHub Actions
 
@@ -220,7 +241,10 @@ Features:
 - Environment-specific deployments
 - Manual approval for production
 
-## Scripts Reference
+
+---
+
+## 📜 Scripts Reference
 
 ### CI Scripts
 
@@ -464,7 +488,10 @@ Features:
 - CHANGELOG format validation
 - Dry-run mode for preview
 
-## CHANGELOG Workflow
+
+---
+
+## 📝 CHANGELOG Workflow
 
 This toolkit includes automated CHANGELOG management to track project changes.
 
@@ -532,14 +559,20 @@ git push && git push --tags
 
 For detailed workflow, see [CONTRIBUTING.md](CONTRIBUTING.md#changelog-workflow).
 
-## Examples
+
+---
+
+## 📁 Examples
 
 See the `examples/` directory for complete working examples:
 
 - **simple-nodejs**: Express API with tests and linting
 - **simple-python**: Flask application with pytest
 
-## Environment Configuration
+
+---
+
+## 🌍 Environment Configuration
 
 Configure deployment environments in `ci-cd.conf`:
 
@@ -560,7 +593,10 @@ required_approvals=2
 url=https://prod.example.com
 ```
 
-## Notifications
+
+---
+
+## 📢 Notifications
 
 Configure Slack webhooks, email, or generic webhooks:
 
@@ -580,7 +616,10 @@ export WEBHOOK_URL=https://hooks.example.com/deploy
 export WEBHOOK_METHOD=POST
 ```
 
-## Troubleshooting
+
+---
+
+## 🛠️ Troubleshooting
 
 ### Enable Debug Logging
 
@@ -610,21 +649,33 @@ bash scripts/setup/install-deps.sh --check
 bash scripts/utils/validators.sh --config
 ```
 
-## Contributing
+
+---
+
+## 🤝 Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## License
+
+---
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+
+---
+
+## 📞 Support
 
 - **Documentation**: See the [docs/](docs/) directory
 - **Issues**: Report bugs on GitHub Issues
 - **Discussions**: Use GitHub Discussions for questions
 
-## Roadmap
+
+---
+
+## 🗺️ Roadmap
 
 - [ ] Azure DevOps pipelines
 - [ ] Bitbucket Pipelines
@@ -633,6 +684,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Monitoring and observability hooks
 - [ ] More language-specific templates
 
-## Acknowledgments
+
+---
+
+## 🙏 Acknowledgments
 
 Built with love for the DevOps community. Inspired by best practices from GitHub Actions, GitLab CI, and modern CI/CD platforms.
