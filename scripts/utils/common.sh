@@ -164,12 +164,18 @@ load_config() {
     # This is a simple implementation - for complex configs, use a dedicated parser
     while IFS='=' read -r key value; do
         # Skip comments and empty lines
-        [[ "${key}" =~ ^#.*$ ]] && continue
+        [[ "${key}" =~ ^[[:space:]]*# ]] && continue
         [[ -z "${key}" ]] && continue
 
         # Remove leading/trailing whitespace
         key="$(echo "${key}" | xargs)"
         value="$(echo "${value}" | xargs)"
+
+        # Skip section headers like [general], [ci], [cd], etc.
+        [[ "${key}" =~ ^\[.*\]$ ]] && continue
+
+        # Skip if key is empty after trimming
+        [[ -z "${key}" ]] && continue
 
         # Export as environment variable
         export "${key}=${value}"
