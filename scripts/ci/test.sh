@@ -74,8 +74,6 @@ test_jest() {
     # Build arguments
     if [[ "${GENERATE_COVERAGE}" == "true" ]]; then
         args+=("--coverage")
-        args+=("--coverageDirectory=${COVERAGE_DIR}")
-        args+=("--coverageReporters=json lcov text")
     fi
 
     if [[ "${PARALLEL_TESTS}" == "true" ]]; then
@@ -171,13 +169,6 @@ test_pytest() {
 
     # Create test results directory (for tools that need it)
     ensure_dir "${TEST_RESULTS_DIR}"
-
-    if [[ "${GENERATE_COVERAGE}" == "true" ]]; then
-        args+=("--cov=.")
-        args+=("--cov-report=xml:${COVERAGE_DIR}/coverage.xml")
-        args+=("--cov-report=html:${COVERAGE_DIR}")
-        args+=("--cov-report=term")
-    fi
 
     if [[ "${PARALLEL_TESTS}" == "true" ]] && check_command pytest-xdist; then
         args+=("-n")
