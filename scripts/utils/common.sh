@@ -49,13 +49,21 @@ fi
 # =============================================================================
 # Global Variables
 # =============================================================================
-# Get the absolute path to the scripts directory
+# TOOLKIT_ROOT: absolute path to the CI/CD toolkit itself (for sourcing
+# utils, loading config, finding internal resources)
 export SCRIPT_DIR
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PROJECT_ROOT
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-export CONFIG_DIR="${PROJECT_ROOT}/config"
+export TOOLKIT_ROOT
+TOOLKIT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+export CONFIG_DIR="${TOOLKIT_ROOT}/config"
 export CONFIG_FILE="${CONFIG_DIR}/ci-cd.conf"
+
+# PROJECT_ROOT: the target project directory (defaults to CWD — the
+# directory from which the script was invoked). Auto-detection of project
+# type, linters, test runners etc. happens HERE, not in the toolkit root.
+# Override with: PROJECT_ROOT=/path/to/project bash scripts/ci/lint.sh
+export PROJECT_ROOT
+PROJECT_ROOT="${PROJECT_ROOT:-$(pwd)}"
 
 # Default configuration values
 export PROJECT_TYPE="${PROJECT_TYPE:-auto}"
