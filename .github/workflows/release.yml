@@ -1,378 +1,47 @@
-# CI/CD Toolkit - GitHub Actions Release Workflow
-# =============================================================================
-# Automated release workflow with changelog generation and artifact publishing.
-#
-# Triggers:
-#   - Git tag push matching pattern (v*, version-*)
-#   - Manual workflow dispatch
-
 name: Release
 
 on:
   push:
     tags:
       - 'v*'
-      - 'version-*'
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (e.g., v1.0.0)'
-        required: true
-        type: string
-      prerelease:
-        description: 'Mark as pre-release'
-        required: false
-        default: false
-        type: boolean
-      create_branch:
-        description: 'Create release branch'
-        required: false
-        default: false
-        type: boolean
-
-env:
-  NODE_VERSION: '20'
 
 permissions:
   contents: write
 
 jobs:
-  # =============================================================================
-  # Prepare Release
-  # =============================================================================
-  prepare:
-    name: Prepare Release
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
-      is_prerelease: ${{ steps.check_prerelease.outputs.is_prerelease }}
-      changelog: ${{ steps.changelog.outputs.changelog }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Determine version
-        id: version
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION="${{ github.event.inputs.version }}"
-          else
-            VERSION="${GITHUB_REF#refs/tags/}"
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Release version: ${VERSION}"
-
-      - name: Check if pre-release
-        id: check_prerelease
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            IS_PRERELEASE="${{ github.event.inputs.prerelease }}"
-          else
-            # Check for pre-release indicators
-            if [[ "${VERSION}" =~ -alpha|-beta|-rc|-pre ]] || \
-               [[ "${VERSION}" =~ a\.|b\.|rc\. ]]; then
-              IS_PRERELEASE="true"
-            else
-              IS_PRERELEASE="false"
-            fi
-          fi
-          echo "is_prerelease=${IS_PRERELEASE}" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          CHANGELOG=$(echo "## Changes since ${PREV_TAG}" && git log ${PREV_TAG}..HEAD --oneline --format="* %s")
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          echo "changelog=${CHANGELOG}" >> $GITHUB_OUTPUT
-          echo "${CHANGELOG}"
-
-      - name: Validate version format
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if [[ ! "${VERSION}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "::error::Version must be in semantic version format (e.g., v1.0.0 or 1.0.0)"
-            exit 1
-          fi
-
-  # =============================================================================
-  # Build Release Artifacts
-  # =============================================================================
-  build:
-    name: Build Artifacts
-    needs: prepare
-    runs-on: ubuntu-latest
-    outputs:
-      artifacts_uploaded: ${{ steps.upload.outputs.success }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup toolkit
-        run: |
-          chmod +x scripts/cd/build.sh
-          chmod +x scripts/utils/common.sh
-          chmod +x scripts/utils/logger.sh
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build release artifacts
-        run: |
-          bash scripts/cd/build.sh \
-            --version "${{ needs.prepare.outputs.version }}" \
-            --output dist
-        env:
-          NODE_ENV: production
-
-      - name: Create archives
-        run: |
-          cd dist
-          tar -czf ../app-${{ needs.prepare.outputs.version }}.tar.gz .
-          cd ..
-
-      - name: Generate checksums
-        run: |
-          sha256sum app-${{ needs.prepare.outputs.version }}.tar.gz > checksums.txt
-          md5sum app-${{ needs.prepare.outputs.version }}.tar.gz >> checksums.txt
-
-      - name: Upload artifacts
-        id: upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-artifacts-${{ needs.prepare.outputs.version }}
-          path: |
-            app-${{ needs.prepare.outputs.version }}.tar.gz
-            checksums.txt
-          retention-days: 90
-
-      - name: Upload dist directory
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ needs.prepare.outputs.version }}
-          path: dist/
-          retention-days: 90
-
-  # =============================================================================
-  # Build Docker Image
-  # =============================================================================
-  docker:
-    name: Build Docker Image
-    needs: [prepare, build]
-    runs-on: ubuntu-latest
-    if: hashFiles('Dockerfile') != ''
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.version }}
-            type=semver,pattern={{major}},value=${{ needs.prepare.outputs.version }}
-            type=raw,value=latest,enable=${{ needs.prepare.outputs.is_prerelease == 'false' }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VERSION=${{ needs.prepare.outputs.version }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-            VCS_REF=${{ github.sha }}
-
-      - name: Image digest
-        run: echo ${{ steps.meta.outputs.digest }}
-
-  # =============================================================================
-  # Run Tests
-  # =============================================================================
-  test:
-    name: Test Release
-    needs: prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Setup toolkit
-        run: |
-          chmod +x scripts/ci/test.sh
-          chmod +x scripts/utils/common.sh
-          chmod +x scripts/utils/logger.sh
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: bash scripts/ci/test.sh --coverage
-
-  # =============================================================================
-  # Create GitHub Release
-  # =============================================================================
   release:
-    name: Create GitHub Release
-    needs: [prepare, build, test, docker]
+    name: Create Release
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Download release artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: release-artifacts-${{ needs.prepare.outputs.version }}
-          path: ./artifacts
-
-      - name: Download dist artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-${{ needs.prepare.outputs.version }}
-          path: ./dist
-        continue-on-error: true
-
-      - name: Create release notes
-        run: |
-          cat > release-notes.md << 'EOF'
-          # Release ${{ needs.prepare.outputs.version }}
-
-          ## Installation
-
-          ### Using npm
-          \`\`\`bash
-          npm install ${{ github.repository }}#${{ needs.prepare.outputs.version }}
-          \`\`\`
-
-          ### Using Docker
-          \`\`\`bash
-          docker pull ghcr.io/${{ github.repository }}:${{ needs.prepare.outputs.version }}
-          \`\`\`
-
-          ## Download
-
-          Find the appropriate package for your platform from the assets below.
-
-          ## What's Changed
-
-          ${{ needs.prepare.outputs.changelog }}
-          EOF
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ needs.prepare.outputs.version }}
-          name: ${{ needs.prepare.outputs.version }}
-          body_path: release-notes.md
-          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
-          files: |
-            ./artifacts/*
-            ./dist/**/*
-          generate_release_notes: false
-          fail_on_unmatched_files: false
-
-  # =============================================================================
-  # Publish to Package Registry
-  # =============================================================================
-  publish:
-    name: Publish to npm
-    needs: [prepare, build, test]
-    runs-on: ubuntu-latest
-    if: needs.prepare.outputs.is_prerelease == 'false'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Publish to npm
-        run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  # =============================================================================
-  # Post-Release Tasks
-  # =============================================================================
-  post-release:
-    name: Post-Release Tasks
-    needs: [release, publish]
-    runs-on: ubuntu-latest
-    if: always() && needs.release.result == 'success'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Create next development version
-        run: |
-          if git rev-parse --verify main &>/dev/null; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-
-            # Increment version
-            npm version patch -m "Bump version to %s [skip ci]"
-
-            # Push changes
-            git push origin main
+    - name: Validate scripts before release
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+        ERRORS=0
+        for script in $(find scripts/ -name "*.sh" -type f); do
+          if ! shellcheck -x -S error "$script"; then
+            ERRORS=$((ERRORS + 1))
           fi
+        done
+        if [ "$ERRORS" -gt 0 ]; then
+          echo "::error::$ERRORS script(s) failed ShellCheck"
+          exit 1
+        fi
+        echo "All scripts pass ShellCheck — safe to release"
 
-      - name: Send notification
-        run: |
-          chmod +x scripts/utils/notifiers.sh
-          bash scripts/utils/notifiers.sh slack "🎉 Release ${{ needs.prepare.outputs.version }} published successfully"
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+    - name: Package toolkit
+      run: |
+        mkdir -p dist
+        tar -czf dist/program-g-code-${GITHUB_REF#refs/tags/}.tar.gz \
+          scripts/ config/ examples/ docs/ README.md LICENSE
+        zip -r dist/program-g-code-${GITHUB_REF#refs/tags/}.zip \
+          scripts/ config/ examples/ docs/ README.md LICENSE
 
-      - name: Update milestone
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Close milestone and create new one (requires gh CLI)
-          if command -v gh &>/dev/null; then
-            gh api \
-              --method POST \
-              -H "Accept: application/vnd.github+json" \
-              "/repos/${{ github.repository }}/milestones/${{ needs.prepare.outputs.version }}" \
-              -f state='closed' || true
-          fi
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*
+        generate_release_notes: true

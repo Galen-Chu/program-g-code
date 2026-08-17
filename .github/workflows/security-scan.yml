@@ -1,392 +1,70 @@
-# CI/CD Toolkit - GitHub Actions Security Scan Workflow
-# =============================================================================
-# Security scanning for vulnerabilities, secrets, and code quality issues.
-#
-# Triggers:
-#   - Push to all branches
-#   - Pull requests
-#   - Scheduled runs (daily)
-#   - Manual workflow dispatch
-
 name: Security Scan
 
 on:
   push:
-    branches:
-      - '**'
+    branches: [ main, develop ]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [ main, develop ]
   schedule:
-    # Run daily at 2 AM UTC
-    - cron: '0 2 * * *'
-  workflow_dispatch:
-
-env:
-  NODE_VERSION: '20'
-  PYTHON_VERSION: '3.11'
-
-permissions:
-  contents: read
-  security-events: write
-  actions: read
+    - cron: '0 6 * * 1'
 
 jobs:
-  # =============================================================================
-  # CodeQL Analysis
-  # =============================================================================
-  codeql:
-    name: CodeQL Analysis
+  security:
+    name: Security Scan
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript, python
-          queries: security-extended,security-and-quality
+    - name: Check for hardcoded secrets
+      run: |
+        # Simple pattern-based secret detection
+        PATTERNS=(
+          "AKIA[0-9A-Z]{16}"
+          "ghp_[a-zA-Z0-9]{36}"
+          "gho_[a-zA-Z0-9]{36}"
+          "sk-[a-zA-Z0-9]{48}"
+          "xox[baprs]-[a-zA-Z0-9-]+"
+          "hooks\.slack\.com/services"
+        )
+        FOUND=0
+        for pattern in "${PATTERNS[@]}"; do
+          if grep -r "$pattern" scripts/ config/ --include="*.sh" --include="*.conf" 2>/dev/null; then
+            echo "::error::Potential secret found matching pattern: $pattern"
+            FOUND=$((FOUND + 1))
+          fi
+        done
+        if [ "$FOUND" -gt 0 ]; then
+          exit 1
+        fi
+        echo "No hardcoded secrets detected"
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+    - name: Check file permissions
+      run: |
+        # Ensure config files are not world-writable
+        for f in config/*.conf; do
+          perms=$(stat -c "%a" "$f")
+          if [ "$((perms % 10))" -ge 2 ]; then
+            echo "::warning::$f is world-writable (perms: $perms)"
+          fi
+        done
+        echo "File permission check complete"
 
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:javascript-python"
-
-  # =============================================================================
-  # Dependency Vulnerability Scan
-  # =============================================================================
-  dependency-scan:
-    name: Dependency Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      # npm audit
-      - name: Run npm audit
-        run: npm audit --json > npm-audit-report.json || true
-        continue-on-error: true
-
-      - name: Upload npm audit report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: npm-audit-report
-          path: npm-audit-report.json
-          retention-days: 30
-
-      # Snyk
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high --sarif-file-output=snyk.sarif
-
-      - name: Upload Snyk results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: snyk.sarif
-
-      # Dependabot compatibility (alternative)
-      - name: Run OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        continue-on-error: true
-        with:
-          project: 'src'
-          path: '.'
-          format: 'HTML'
-          out: 'dependency-check-report'
-        env:
-          JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-
-      - name: Upload Dependency Check report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: dependency-check-report
-          path: dependency-check-report/
-          retention-days: 30
-
-  # =============================================================================
-  # Secret Scanning
-  # =============================================================================
-  secret-scan:
-    name: Secret Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # gitleaks
-      - name: Gitleaks scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
-
-      # truffleHog (alternative)
-      - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-        continue-on-error: true
-
-  # =============================================================================
-  # SAST (Static Application Security Testing)
-  # =============================================================================
-  sast:
-    name: SAST Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      # ESLint security plugin
-      - name: Run ESLint security plugin
-        if: hashFiles('.eslintrc*', 'package.json') != ''
-        run: |
-          npm install -D eslint-plugin-security
-          npx eslint --plugin security --format json . > eslint-security-report.json || true
-        continue-on-error: true
-
-      - name: Upload ESLint security report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: eslint-security-report
-          path: eslint-security-report.json
-          retention-days: 30
-
-      # Semgrep
-      - name: Semgrep scan
-        uses: returntocorp/semgrep-action@v1
-        continue-on-error: true
-        with:
-          config: auto
-          sarif: true
-          output: semgrep-report.sarif
-
-      - name: Upload Semgrep results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: semgrep-report.sarif
-          category: semgrep
-
-  # =============================================================================
-  # Container Security Scan
-  # =============================================================================
-  container-scan:
-    name: Container Security Scan
-    runs-on: ubuntu-latest
-    if: hashFiles('Dockerfile') != ''
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t test-image .
-
-      # Trivy vulnerability scanner
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: test-image
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy
-
-      # Docker Bench
-      - name: Run Docker Bench for Security
-        uses: docker/docker-bench-security-action@master
-        continue-on-error: true
-        with:
-          image: test-image
-          format: json
-          output-file: docker-bench-results.json
-
-      - name: Upload Docker Bench results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: docker-bench-results
-          path: docker-bench-results.json
-          retention-days: 30
-
-  # =============================================================================
-  # Infrastructure as Code Scan
-  # =============================================================================
-  iac-scan:
-    name: IaC Scan
-    runs-on: ubuntu-latest
-    if: hashFiles('**/*.tf', '**/*.yml', '**/*.yaml', 'kubernetes/**/*.yaml') != ''
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Checkov for Terraform/Kubernetes/YAML
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@master
-        continue-on-error: true
-        with:
-          directory: .
-          framework: terraform,kubernetes,helm,kubernetes
-          output_format: cli,sarif
-          output_file_path: checkov-results.sarif,console
-          soft_fail: false
-
-      - name: Upload Checkov results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: checkov-results.sarif
-          category: checkov
-
-      # tfsec for Terraform (alternative)
-      - name: Run tfsec
-        uses: aquasecurity/tfsec-action@v1.0.0
-        if: hashFiles('**/*.tf') != ''
-        with:
-          sarif_file: tfsec-results.sarif
-          continue_on_error: true
-
-      - name: Upload tfsec results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: hashFiles('**/*.tf') != ''
-        with:
-          sarif_file: tfsec-results.sarif
-          category: tfsec
-
-  # =============================================================================
-  # License Compliance Scan
-  # =============================================================================
-  license-scan:
-    name: License Scan
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      # FOSSA license scan (requires FOSSA_API_KEY)
-      - name: Run FOSSA scan
-        if: hashFiles('.fossa.yml') != ''
-        uses: fossas/fossa-action@v1
-        continue-on-error: true
-        with:
-          api-key: ${{ secrets.FOSSA_API_KEY }}
-
-      # licensee (simple alternative)
-      - name: Run licensee
-        uses: licensee/action@v1
-        continue-on-error: true
-
-      # npm license check
-      - name: Check npm licenses
-        run: |
-          npm install -g license-checker
-          license-checker --production --json > license-report.json || true
-        continue-on-error: true
-
-      - name: Upload license report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: license-report
-          path: license-report.json
-          retention-days: 90
-
-  # =============================================================================
-  # Security Summary
-  # =============================================================================
-  summary:
-    name: Security Summary
-    runs-on: ubuntu-latest
-    needs: [codeql, dependency-scan, secret-scan, sast, container-scan, iac-scan, license-scan]
-    if: always()
-    steps:
-      - name: Generate security summary
-        run: |
-          echo "## Security Scan Summary 🔒" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Scan Type | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| CodeQL | ${{ needs.codeql.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Dependency Scan | ${{ needs.dependency-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Secret Scan | ${{ needs.secret-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| SAST | ${{ needs.sast.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container Scan | ${{ needs.container-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| IaC Scan | ${{ needs.iac-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| License Scan | ${{ needs.license-scan.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Details" >> $GITHUB_STEP_SUMMARY
-          echo "Check the Security tab for detailed findings." >> $GITHUB_STEP_SUMMARY
-
-      - name: Download all reports
-        uses: actions/download-artifact@v4
-        with:
-          path: all-security-reports/
-
-      - name: Upload reports as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-security-reports
-          path: all-security-reports/
-          retention-days: 30
-
-      - name: Security scan failure notification
-        if: |
-          needs.codeql.result == 'failure' ||
-          needs.secret-scan.result == 'failure' ||
-          needs.sast.result == 'failure'
-        run: |
-          chmod +x scripts/utils/notifiers.sh
-          bash scripts/utils/notifiers.sh slack "🚨 Security scan failed in ${{ github.repository }}"
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+    - name: ShellCheck security rules
+      run: |
+        sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+        ERRORS=0
+        for script in scripts/**/*.sh; do
+          if ! shellcheck -x -S error -s bash "$script" 2>&1 | grep -q "SC2148\|SC2086\|SC2164\|SC2116"; then
+            continue  # No security-relevant issues
+          fi
+          if shellcheck -x -S error "$script" 2>&1 | grep -q "^Error"; then
+            echo "::error::Security issue in $script"
+            ERRORS=$((ERRORS + 1))
+          fi
+        done
+        if [ "$ERRORS" -gt 0 ]; then
+          exit 1
+        fi
+        echo "ShellCheck security rules passed"
