@@ -8,8 +8,8 @@
 
 set -euo pipefail
 
-# Ensure common.sh is loaded
-if [[ -z "${SCRIPT_DIR:-}" ]]; then
+# Ensure common.sh is loaded (LOG_LEVEL is always set by common.sh)
+if [[ -z "${LOG_LEVEL:-}" ]]; then
     echo "ERROR: logger.sh must be sourced after common.sh" >&2
     exit 1
 fi
