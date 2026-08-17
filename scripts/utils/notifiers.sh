@@ -23,11 +23,14 @@
 set -euo pipefail
 
 # Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_NOTIFIERS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    SCRIPT_DIR="_NOTIFIERS_DIR"
+fi
 
 # Source dependencies
-source "${SCRIPT_DIR}/common.sh"
-source "${SCRIPT_DIR}/logger.sh"
+source "${_NOTIFIERS_DIR}/common.sh"
+source "${_NOTIFIERS_DIR}/logger.sh"
 
 # =============================================================================
 # Notification Configuration

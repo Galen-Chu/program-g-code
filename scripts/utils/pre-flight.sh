@@ -22,11 +22,14 @@
 set -euo pipefail
 
 # Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_PRE_FLIGHT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    SCRIPT_DIR="_PRE_FLIGHT_DIR"
+fi
 
 # Source dependencies
-source "${SCRIPT_DIR}/common.sh"
-source "${SCRIPT_DIR}/logger.sh"
+source "${_PRE_FLIGHT_DIR}/common.sh"
+source "${_PRE_FLIGHT_DIR}/logger.sh"
 
 # =============================================================================
 # Script Configuration

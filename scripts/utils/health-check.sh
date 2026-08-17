@@ -25,12 +25,10 @@
 
 set -euo pipefail
 
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Source dependencies
-source "${SCRIPT_DIR}/common.sh"
-source "${SCRIPT_DIR}/logger.sh"
+# Source dependencies (use own dir; don't overwrite caller's SCRIPT_DIR)
+_HC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${_HC_DIR}/common.sh"
+source "${_HC_DIR}/logger.sh"
 
 # =============================================================================
 # Configuration

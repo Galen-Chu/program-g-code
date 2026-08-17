@@ -25,12 +25,15 @@
 set -euo pipefail
 
 # Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_STATUS_CHECK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -z "${SCRIPT_DIR:-}" ]]; then
+    SCRIPT_DIR="_STATUS_CHECK_DIR"
+fi
 
 # Source dependencies
-source "${SCRIPT_DIR}/common.sh"
-source "${SCRIPT_DIR}/logger.sh"
-source "${SCRIPT_DIR}/validators.sh"
+source "${_STATUS_CHECK_DIR}/common.sh"
+source "${_STATUS_CHECK_DIR}/logger.sh"
+source "${_STATUS_CHECK_DIR}/validators.sh"
 
 # =============================================================================
 # Script Configuration
