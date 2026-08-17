@@ -51,10 +51,12 @@ fi
 # =============================================================================
 # TOOLKIT_ROOT: absolute path to the CI/CD toolkit itself (for sourcing
 # utils, loading config, finding internal resources)
-export SCRIPT_DIR
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Note: uses a private variable (_COMMON_DIR) to avoid overwriting the
+# caller's SCRIPT_DIR — each script (lint.sh, deploy.sh, etc.) sets its
+# own SCRIPT_DIR before sourcing this file
+_COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export TOOLKIT_ROOT
-TOOLKIT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+TOOLKIT_ROOT="$(cd "${_COMMON_DIR}/../.." && pwd)"
 export CONFIG_DIR="${TOOLKIT_ROOT}/config"
 export CONFIG_FILE="${CONFIG_DIR}/ci-cd.conf"
 
