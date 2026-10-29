@@ -328,7 +328,7 @@ log_table() {
 #        log_progress_stop
 log_progress_start() {
     local message="$1"
-    printf "${COLOR_BLUE}${message}... ${COLOR_RESET}"
+    printf "%b" "${COLOR_BLUE}${message}... ${COLOR_RESET}"
 }
 
 log_progress_stop() {

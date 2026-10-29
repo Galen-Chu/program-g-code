@@ -435,7 +435,7 @@ main_test() {
 
         return 0
     else
-        return ${exit_code}
+        return "${exit_code}"
     fi
 }
 

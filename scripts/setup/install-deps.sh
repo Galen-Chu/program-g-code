@@ -493,7 +493,6 @@ install_general_tools() {
         esac
     fi
 
-    # shellcheck
     if ! check_command shellcheck; then
         case "${os}" in
             linux)

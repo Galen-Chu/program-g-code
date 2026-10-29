@@ -429,7 +429,7 @@ main_lint() {
         log_section "Lint Complete"
         return 0
     else
-        return ${exit_code}
+        return "${exit_code}"
     fi
 }
 

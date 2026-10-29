@@ -127,7 +127,8 @@ notify_slack_rich() {
     log_debug "Sending rich Slack notification..."
 
     # Build JSON payload
-    local payload='{
+    local payload
+    payload='{
         "username": "'"${SLACK_USERNAME}"'",
         "icon_emoji": "'"${SLACK_ICON}"'",
         "attachments": [{

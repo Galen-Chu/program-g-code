@@ -133,7 +133,7 @@ pre_deploy_checks() {
 
     # Check if build artifacts exist
     if [[ "${SKIP_BUILD}" != "true" ]]; then
-        if [[ ! -d "${ARTIFACTS_DIR}" ]] || [[ -z "$(ls -A ${ARTIFACTS_DIR} 2>/dev/null)" ]]; then
+        if [[ ! -d "${ARTIFACTS_DIR}" ]] || [[ -z "$(ls -A "${ARTIFACTS_DIR}" 2>/dev/null)" ]]; then
             log_warn "No build artifacts found. Running build..."
             "${SCRIPT_DIR}/build.sh" || return $?
         fi

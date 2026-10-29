@@ -142,7 +142,8 @@ generate_config() {
     slack_webhook="$(prompt "Slack webhook URL (leave empty if not using)" "")"
 
     # Build configuration file
-    local config="# CI/CD Configuration for ${project_name}
+    local config
+    config="# CI/CD Configuration for ${project_name}
 # Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
 [general]
