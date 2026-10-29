@@ -58,7 +58,7 @@ _COMMON_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export TOOLKIT_ROOT
 TOOLKIT_ROOT="$(cd "${_COMMON_DIR}/../.." && pwd)"
 export CONFIG_DIR="${TOOLKIT_ROOT}/config"
-export CONFIG_FILE="${CONFIG_DIR}/ci-cd.conf"
+export CONFIG_FILE="${CONFIG_FILE:-${CONFIG_DIR}/ci-cd.conf}"
 
 # PROJECT_ROOT: the target project directory (defaults to CWD — the
 # directory from which the script was invoked). Auto-detection of project
@@ -177,9 +177,13 @@ load_config() {
         [[ "${key}" =~ ^[[:space:]]*# ]] && continue
         [[ -z "${key}" ]] && continue
 
-        # Remove leading/trailing whitespace
-        key="$(echo "${key}" | xargs)"
-        value="$(echo "${value}" | xargs)"
+        # Remove leading/trailing whitespace — pure bash, no subshell
+        # spawn per line (echo|xargs forked ~2 processes per config line
+        # and mangled values containing quotes)
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        value="${value%"${value##*[![:space:]]}"}"
 
         # Skip section headers like [general], [ci], [cd], etc.
         [[ "${key}" =~ ^\[.*\]$ ]] && continue
@@ -343,6 +347,9 @@ parse_args() {
                 ;;
             --config)
                 export CONFIG_FILE="$2"
+                # common_init already ran (with the default config) at
+                # source time — load the newly selected config immediately
+                load_config "${CONFIG_FILE}" || true
                 shift 2
                 ;;
             --version|-v)
@@ -411,6 +418,12 @@ common_init() {
 
 # Auto-initialize when sourced
 common_init
+
+# Normalize config's [cd] artifacts_dir (lowercase, exported by load_config)
+# into the ARTIFACTS_DIR variable that build/deploy/rollback actually read.
+# Must run after common_init so config values are loaded; an explicit
+# ARTIFACTS_DIR in the environment always wins.
+export ARTIFACTS_DIR="${ARTIFACTS_DIR:-${artifacts_dir:-dist}}"
 
 # Export all functions for use in subshells
 export -f error_exit

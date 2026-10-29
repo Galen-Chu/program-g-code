@@ -35,6 +35,7 @@ source "${SCRIPT_DIR}/../utils/validators.sh"
 # Script Configuration
 # =============================================================================
 ROLLBACK_VERSION="${ROLLBACK_VERSION:-}"
+LIST_VERSIONS="${LIST_VERSIONS:-false}"
 KEEP_VERSIONS="${KEEP_VERSIONS:-5}"
 ROLLBACK_TIMEOUT="${ROLLBACK_TIMEOUT:-600}"
 
@@ -59,7 +60,8 @@ list_versions() {
     fi
 
     # List versions with timestamps
-    local versions=($(ls -t "${env_versions_dir}" 2>/dev/null || echo ""))
+    local versions=()
+    mapfile -t versions < <(ls -t "${env_versions_dir}" 2>/dev/null || true)
 
     if [[ ${#versions[@]} -eq 0 ]]; then
         log_warn "No versions found"
@@ -101,7 +103,8 @@ save_current_version() {
     log_info "Saving current version: ${version}"
 
     # Create metadata
-    local metadata="{
+    local metadata
+    metadata="{
         \"version\": \"${version}\",
         \"timestamp\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",
         \"environment\": \"${environment}\",
@@ -134,7 +137,8 @@ cleanup_old_versions() {
         return 0
     fi
 
-    local versions=($(ls -t "${env_versions_dir}" 2>/dev/null || echo ""))
+    local versions=()
+    mapfile -t versions < <(ls -t "${env_versions_dir}" 2>/dev/null || true)
 
     if [[ ${#versions[@]} -gt ${KEEP_VERSIONS} ]]; then
         log_info "Cleaning up old versions (keeping ${KEEP_VERSIONS} most recent)..."
@@ -142,8 +146,14 @@ cleanup_old_versions() {
         local old_versions=("${versions[@]:${KEEP_VERSIONS}}")
 
         for old_version in "${old_versions[@]}"; do
+            # 只刪除長得像版本目錄名的條目（非空、無路徑分隔、非隱藏檔），
+            # 防止目錄清單解析異常時誤刪不該刪的東西
+            if [[ -z "${old_version}" || "${old_version}" == */* || "${old_version}" == .* ]]; then
+                log_warn "Skipping suspicious version entry: '${old_version}'"
+                continue
+            fi
             log_info "Removing old version: ${old_version}"
-            rm -rf "${env_versions_dir}/${old_version}"
+            rm -rf "${env_versions_dir:?}/${old_version:?}"
         done
     fi
 }
@@ -160,7 +170,8 @@ get_previous_version() {
     fi
 
     # Get second most recent version (first is current)
-    local versions=($(ls -t "${env_versions_dir}" 2>/dev/null || echo ""))
+    local versions=()
+    mapfile -t versions < <(ls -t "${env_versions_dir}" 2>/dev/null || true)
 
     if [[ ${#versions[@]} -lt 2 ]]; then
         echo ""
@@ -475,6 +486,7 @@ main() {
                 ;;
             --config)
                 export CONFIG_FILE="$2"
+                load_config "${CONFIG_FILE}" || true
                 shift 2
                 ;;
             --log-level)
